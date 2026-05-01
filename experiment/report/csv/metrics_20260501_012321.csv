@@ -1,0 +1,3 @@
+Method,Endpoint,Total_Requests,Failures,Error_Rate_%,RPS,Avg_Latency_ms,Min_Latency_ms,Max_Latency_ms,Median_Latency_ms,P90_Latency_ms,P95_Latency_ms,P99_Latency_ms
+GET,/cpu_fixed,127,10,7.87,0.71,53537.89,2024.54,70859.89,60000.0,69000.0,70000.0,71000.0
+GET,/cpu,139,6,4.32,0.78,54778.7,2030.19,70192.6,61000.0,68000.0,69000.0,70000.0

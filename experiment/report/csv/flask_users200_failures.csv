@@ -1,0 +1,3 @@
+Method,Name,Error,Occurrences
+GET,/cpu,CatchResponseError('Status: 0'),3316
+GET,/cpu_fixed,CatchResponseError('Status: 0'),3303
