@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск научных публикаций | Crossref</title>
+    <!-- Bootstrap 5 CSS (адаптивная сетка, карточки) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .result-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 20px;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .affiliation-badge {
+            font-size: 0.85rem;
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        .error-alert {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <header class="text-center mb-5">
+            <h1 class="display-5 fw-bold">🔍 Поиск публикаций</h1>
+            <p class="lead">База данных Crossref (API) — асинхронный поиск по автору или названию</p>
+        </header>
+
+        <!-- Форма поиска с Bootstrap -->
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body p-4">
+                        <form method="POST" action="/" id="searchForm">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Тип поиска</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="search_type" 
+                                               id="authorSearch" value="author" 
+                                               {% if search_type == 'author' or not search_performed %}checked{% endif %}>
+                                        <label class="form-check-label" for="authorSearch">
+                                            👤 По автору
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="search_type" 
+                                               id="titleSearch" value="title"
+                                               {% if search_type == 'title' %}checked{% endif %}>
+                                        <label class="form-check-label" for="titleSearch">
+                                            📖 По названию
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="query" class="form-label fw-semibold">Поисковый запрос</label>
+                                <input type="text" class="form-control form-control-lg" 
+                                       id="query" name="query" 
+                                       value="{{ query }}" 
+                                       placeholder="Например: Einstein или Quantum Mechanics"
+                                       required>
+                                <div class="form-text">Введите фамилию автора или ключевые слова названия.</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">
+                                🚀 Найти публикации
+                            </button>
+                        </form>
+
+                        <!-- Индикатор загрузки (асинхронный запрос) -->
+                        <div class="loading mt-3" id="loadingIndicator">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Выполняется асинхронный запрос к Crossref API...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Отображение ошибок -->
+        {% if error %}
+        <div class="row justify-content-center mt-4">
+            <div class="col-md-8">
+                <div class="alert alert-danger error-alert alert-dismissible fade show" role="alert">
+                    <strong>⚠️ Ошибка:</strong> {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Результаты поиска (адаптивная сетка карточек) -->
+        {% if search_performed and not error %}
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-10">
+                <h3 class="mb-4 fw-semibold">
+                    📚 Результаты поиска 
+                    <span class="badge bg-secondary">{{ results|length }}</span>
+                </h3>
+                
+                {% if results %}
+                <div class="row">
+                    {% for pub in results %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card result-card h-100 border-0 shadow-sm rounded-3">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary fw-bold">{{ pub.title[:100] }}{% if pub.title|length > 100 %}...{% endif %}</h5>
+                                
+                                <div class="mb-2">
+                                    <strong>👨‍🎓 Автор:</strong> {{ pub.first_author }}
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <strong>📔 Издание:</strong> {{ pub.container_title }}
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <strong>📅 Год:</strong> {{ pub.year }}
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <span class="badge affiliation-badge">
+                                        🏛️ {{ pub.affiliation }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info text-center">
+                    <strong>ℹ️ Ничего не найдено.</strong> Попробуйте изменить запрос.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Дополнительный блок: пример массового асинхронного поиска -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-10">
+                <div class="card border-secondary">
+                    <div class="card-header bg-secondary text-white">
+                        🔄 Расширенный пример: асинхронный поиск по нескольким авторам
+                    </div>
+                    <div class="card-body">
+                        <form id="batchForm" action="/batch_search" method="POST">
+                            <div class="mb-3">
+                                <label class="form-label">Список авторов (через запятую)</label>
+                                <input type="text" class="form-control" name="authors" 
+                                       placeholder="Doe, Smith, Einstein">
+                            </div>
+                            <button type="submit" class="btn btn-outline-secondary">
+                                ⚡ Асинхронный параллельный поиск
+                            </button>
+                        </form>
+                        <div id="batchResults" class="mt-3 small text-muted"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS и интерактивность -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Показ индикатора загрузки при отправке формы (имитация асинхронности)
+        const form = document.getElementById('searchForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        form.addEventListener('submit', function() {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '⏳ Загрузка...';
+            loadingIndicator.style.display = 'block';
+        });
+        
+        // Обработка batch-формы через fetch (демонстрация AJAX + асинхронность)
+        const batchForm = document.getElementById('batchForm');
+        const batchResults = document.getElementById('batchResults');
+        
+        batchForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(batchForm);
+            batchResults.innerHTML = '<div class="spinner-border spinner-border-sm text-secondary"></div> Выполняется асинхронный запрос...';
+            
+            try {
+                const response = await fetch('/batch_search', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    batchResults.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                } else {
+                    let html = '<div class="accordion" id="batchAccordion">';
+                    for (const [author, info] of Object.entries(data)) {
+                        html += `
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${author.replace(/\s/g, '')}">
+                                        ${author} — ${info.count || 0} публикаций
+                                    </button>
+                                </h2>
+                                <div id="collapse${author.replace(/\s/g, '')}" class="accordion-collapse collapse" data-bs-parent="#batchAccordion">
+                                    <div class="accordion-body small">
+                                        ${info.items ? info.items.map(pub => `<strong>${pub.title}</strong> (${pub.year})<br>`).join('') : 'Ошибка или нет данных'}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    batchResults.innerHTML = html;
+                }
+            } catch (err) {
+                batchResults.innerHTML = `<div class="alert alert-danger">Ошибка: ${err.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>
