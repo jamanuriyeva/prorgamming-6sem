@@ -230,7 +230,6 @@ async def cpu_nonblocking(request):
 
 **Оценка готовности:** 95%. Наиболее комплексный результат.
 
-**[СКРИНШОТ 3: GigaCode few-shot]**
 
 ---
 
